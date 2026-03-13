@@ -1,6 +1,6 @@
 name = "StandingColumnWell"
 uuid = "14553381-1095-437c-82ce-6f40d6ca339a"
-authors = ["Gabriel-Dion <dion.gabriel100@gmail.com> and contributors"]
+authors = ["Gabriel-Dion <dion.gabriel100@gmail.com>"]
 version = "1.0.0-DEV"
 
 [compat]
