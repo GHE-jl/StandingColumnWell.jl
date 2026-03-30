@@ -1,10 +1,12 @@
 using SpecialFunctions: erf
-using Roots: find_zero
-includet("infinite_line_source.jl")
-includet("../temporal_superposition.jl")
 
 """
-    βils_outlet(t, k, kp, K, rb, ro, ri, H, Hp, V, β, T₀)
+This file also uses the infinite line source (ILS) model and the convolution product implemented
+in the GroundHeatExchanger.jl
+"""
+
+"""
+    βils_outlet(t, k, kp, K, rb, ro, ri, H, Hp, V, β, T₀, dT, ϵb, ϵp)
 
 Compute the borehole outlet transfer function from the β-ILS model and the thermal resistance
 of the SCW. The function computes the borehole wall (g-function) using the β-ILS model, then
@@ -31,6 +33,11 @@ The obtained transfer function is for an impulse of 1 W/m.
     - `V`: Circulating fluid flow rate [m³/s]
     - `β`: Fluid bleed rate ratio (between 0.01 and 1) [-]
     - `T₀`: Initial ground temperature [°C] (used for water properties)
+    - `dT`: Temperature difference at the heat exchanger (for fluid properties) [K]
+        - Positive value: Ground heating -> the fluid is being cooled (Tb<Tf)
+        - Negative value: Ground cooling -> the fluid is being heating (Tb>Tf)
+    - `ϵb`: Borehole roughness height [m]
+    - `ϵp`: Pipe roughness height [m]
 # Output
     - `g̃`: A transfer function for the outlet fluid temperature of SCW [°Cm/W]
 # Reference
@@ -41,10 +48,10 @@ The obtained transfer function is for an impulse of 1 W/m.
         validation of an analytical model for standing column wells operated with bleed. Applied 
         Thermal Engineering, 279, 127620.
 """
-function βils_outlet(t, k::AbstractMatrix{T}, kp::T, K::AbstractMatrix{T}, rb::T, ro::T, ri::T,
-    H::T, Hp::T, V::T, β::T, T₀::T) where {T<:AbstractFloat}
+function βils_outlet(t, k::AbstractMatrix{<:Real}, kp::Real, K::AbstractMatrix{<:Real}, rb::Real,
+    ro::Real, ri::Real, H::Real, Hp::Real, V::Real, β::Real, T₀::Real, dT::Real, ϵb::Real, ϵp::Real)
     # 1. Compute the thermal resistance of the SCW
-    Rfb, Rv, f = Rb_SCW(V, kp, rb, ro, ri, H, Hp, T₀)
+    Rfb, Rv, f = borehole_resistance_scw(V, kp, rb, ro, ri, H, Hp, T₀, dT, ϵb, ϵp)
 
     # 2. Compute the borehole wall g-function using the β-ILS model
     gb = βils(t, k, K, rb, ro, H, V, β, f) # Jacques et al. Eq. 8
@@ -86,8 +93,8 @@ length [W/m] to provide the borehole wall temperature.
         validation of an analytical model for standing column wells operated with bleed. Applied 
         Thermal Engineering, 279, 127620.
 """
-function βils(t, k::AbstractMatrix{T}, K::AbstractMatrix{T}, rb::T, ro::T, H::T, V::T, β::T, f::T
-    ) where {T<:AbstractFloat}
+function βils(t, k::AbstractMatrix{<:Real}, K::AbstractMatrix{<:Real}, rb::Real, ro::Real, H::Real,
+    V::Real, β::Real, f::Real)
     # 0. Check inputs
     if size(k, 2) != 3
         error("k must be a (ix3) matrix of geological layers and their thermal properties.")
@@ -103,7 +110,7 @@ function βils(t, k::AbstractMatrix{T}, K::AbstractMatrix{T}, rb::T, ro::T, H::T
     Cs = sum(k[:, 3] .* k[:, 1]) / sum(k[:, 1])
 
     # 2. Induced convergent flow consideration
-    H̃₁, _, K̃₁, _ = convergence_flow(K, H)   # Compute the effective hydraulic properties
+    H̃₁, _, K̃₁, _ = convergence_flow(K)      # Compute the effective hydraulic properties
     ΔHa = 0.22                              # Assumption: Drawdown caused by recirculation
     rₘ = 100                                # Assumption: Drawdown horizontal influence radius
     # Jacques et al. Eq. 35
@@ -123,7 +130,7 @@ function βils(t, k::AbstractMatrix{T}, K::AbstractMatrix{T}, rb::T, ro::T, H::T
     # 3. Compute the Peclet number and dimensionless time
     ta = @. (Ṽ / H̃₁ + Vb / He) * t / (π * rb^2) # Dimensionless time, Jacques et al. Eq. 33
     Pe = (Ṽ / H̃₁ + Vb / He) / (2 * π * (ks / Cs)) # Effective Peclet number, Jacques et al. Eq. 32
-    
+
     # 4. Range of validity of the inputs based on scenarios in Nguyen et al. (2025)
     # values_validity(t, ks, Cs, rb, H, V, β, Vb, Pe)
 
@@ -136,7 +143,7 @@ function βils(t, k::AbstractMatrix{T}, K::AbstractMatrix{T}, rb::T, ro::T, H::T
     h = @. ϵ[1] * (1 - ϵ[2] * β) * (1 + erf((sqrt(Pe) / ϵ[3]) * ((1 - ta^ϵ[4]) / (ta^ϵ[4]))))
     
     # 6. Initial transfer function g_0 based on the SLI
-    g₀ = ils(t, ks, Cs, rb)                 # Jacques et al. Eq. 3
+    g₀ = ils(t, rb, ks, Cs)                 # Jacques et al. Eq. 3
 
     # 7. Combine initial and scaling function
     gb = convolution(g₀, h)      # Jacques et al. Eq. 8
@@ -144,127 +151,7 @@ function βils(t, k::AbstractMatrix{T}, K::AbstractMatrix{T}, rb::T, ro::T, H::T
 end
 
 """
-    Rb_SCW(V, kp, rb, ro, ri, H, Hp, Tf, dT=2.0)
-
-Computation of theoretical thermal resistance in a SCW based on Jacques et al. 2025. This 
-formulation assumes uniform flux along the borehole wall.
-# Arguments
-    - `V`: Circulating fluid flow rate [m³/s]
-    - `kp`: Pipe thermal conductivity [W/mK]
-    - `rb`: Borehole radius [m]
-    - `ro`: Outer pipe radius [m]
-    - `ri`: Inner pipe radius [m]
-    - `H`: Borehole depth [m]
-    - `Hp`: Pipe length [m]
-    - `Tf`: Fluid temperature [°C]
-    - `dT`: (Optional) Temperature difference at the heat exchanger 
-        - Positive value: Ground heating -> the fluid is being cooled (Tb<Tf)
-        - Negative value: Ground cooling -> the fluid is being heating (Tb>Tf)
-# Output
-    - `Rfb`: Subsurface effective borehole thermal resistance in a SCW [K·m/W]
-    - `Rv`: Hydraulic resistance due to the fluid flow [K·m/W]
-    - `f`: Friction factor of the borehole [-]
-# Reference
-    - Jacques, L., Pasquier, P., Nguyen, A., & Beaudry, G. (2025). Improvement and experimental 
-        validation of an analytical model for standing column wells operated with bleed. Applied 
-        Thermal Engineering, 279, 127620.
-    - Seol, H., Jeong, S., Cho, C., & You, K. (2008). Shear load transfer for rock-
-        socketed drilled shafts based on borehole roughness and geological strength index (GSI). 
-        International Journal of Rock Mechanics and Mining Sciences, 45(6), 848–861. 
-        https://doi.org/10.1016/j.ijrmms.2007.09.008
-    - Todorov, O., Alanne, K., Virtanen, M., & Kosonen, R. (2021). Different Approaches for 
-        Evaluation and Modeling of the Effective Thermal Resistance of Groundwater-Filled Boreholes.
-    - Lamarche, L. (2023). Fundamentals of Geothermal Heat Pump Systems: Design and Application. 
-        Springer Nature Switzerland.
-"""
-function Rb_SCW(V::T, kp::T, rb::T, ro::T, ri::T, H::T, Hp::T, Tf::T, dT::T = 2.0, 
-    ) where {T<:AbstractFloat}
-    # Initialize parameters
-    ρf = water_ρ(Tf)                    # Water density at working fluid temperature
-    cpf = water_cp(Tf)                  # Water specific heat at working fluid temperature
-    kf = water_k(Tf)                    # Water thermal conductivity at working fluid temperature
-    μf = water_μ(Tf)                    # Water viscosity at working fluid temperature
-    μf_dT = water_μ(Tf + dT)            # Water viscosity at working fluid temperature + dT
-    np = 1                              # number of pipes (1 in a SCW)
-    L = [Hp, H]                         # Lengths for (1) pipe and (2) borehole for [m]
-    ϵb = 5e-4                           # Assumption: Borehole roughness [m]
-    ϵp = 0.0                            # Assumption: Pipe roughness [m]
-
-    # Preallocation
-    Pr, rₑ, Re, Nu, h = zeros(T, 2), zeros(T, 2), zeros(T, 2), zeros(T, 2), zeros(T, 2)
-    Rf, f = zeros(T, 2), zero(T)
-    
-    # Prandtl numbers
-    Pr[1] = μf * cpf / kf
-    Pr[2] = μf * cpf / kf
-
-    # Reynold numbers in pipe (i == 1) or borehole (i == 2)
-    rₑ[1] = ri                          # Equivalent radius in the pipe
-    rₑ[2] = (rb - ro)                   # Equivalent radius in the borehole
-    Re[1] = ρf * (V / (π * ri^2)) * 2.0 * rₑ[1] / μf
-    Re[2] = ρf * (V / ((π * rb^2) - (π * ro^2))) * 2.0 * rₑ[2] / μf
-
-    # Nusselt number, loop for regions i = 1 (pipe), i = 2 (borehole)
-    for i in 1:2
-        if Re[i] < 2300                 # Laminar flow in pipe or borehole
-            term1 = (Re[i] * Pr[i] * 2 * rₑ[i] / L[i])^0.333 * (μf / μf_dT)^0.14
-            if i == 1 && term1 >= 2
-                Nu[i] = 4.36    # Lamarche Eq. 2.42
-            elseif i == 1
-                Nu[i] = 1.86 * term1
-            elseif i == 2
-                f = 64 / Re[i]
-                Nu[i] = 3.66
-            else
-                error("Unexpected case in Nusselt number calculation. Laminar flow.")
-            end
-        elseif Re[i] > 10000 || i == 2  # Turbulent flow (Re>2300 in borehole, Todorov et al. 2021)
-            if i == 1                   # Turbulent flow in pipe
-                # Dittus-Boelter equation to solve for Nu
-                dT > 0 ? n = 0.3 : n = 0.4 # Define fluid heating or cooling
-                Nu[i] = 0.023 * Re[i]^0.8 * Pr[i]^n # Jacques et al. Eq. A.44
-            elseif i == 2               # Turbulent flow in borehole
-                # Colebrook-White equation to solve for f in borehole
-                ϵ = (ϵb * rb + ϵp * ro) / (rb + ro) # Equivalent roughness [m] Jacques et al. Eq. 47
-                obj_fun(F) = 1 / sqrt(F) + 2 * log10(ϵ / (3.7 * (2 * (rb - ro))) + 2.51 / 
-                    (Re[i] * sqrt(F)))  # Jacques et al. Eq. A.45
-                f = find_zero(obj_fun, 1e-2)
-                # Nusselt number in borehole (see Todorov et al. 2021)
-                Nu[i] = ((f / 8) * (Re[i] - 1000.0) * Pr[i]) / (1 + 12.7 * (f / 8)^0.5 * 
-                    (Pr[i]^(2 / 3) - 1)) # Jacques et al. Eq. A.46
-            else
-                error("Unexpected case in Nusselt number calculation. Turbulent flow.")
-            end
-        else    # Transitional flow in pipe only (i = 1 and 2300 < Re < 10000)
-            f = (1.58 * log(Re[i]) - 3.28)^(-2) # Jacques et al. 2025
-            # f = (0.79 * log(Re[i]) - 1.64)^(-2) # Lamarche 2023
-            Nu[i] = ((f / 2) * (Re[i] - 1000.0) * Pr[i]) / (1 + 12.7 * (f / 2)^0.5 * 
-                (Pr[i]^(2 / 3) - 1)) # Jacques et al. Eq. A.46
-        end
-        # Film coefficient (h) and fluid resistance (Rf)
-        h[i] = Nu[i] * kf / (2 * rₑ[i])
-        Rf[i] = 1 / (2 * np * π * rₑ[i] * h[i]) # Fluid thermal resistance
-    end
-
-    # Convective thermal resistances for the fluid in pipe and borehole
-    RCi = 1 / (Nu[1] * kf * π)          # In pipe at ri, Jacques et al. Eq. A. 41
-    RCo = 1 / (Nu[2] * kf * π) * rₑ[2] / ro # In borehole at ro, Jacques et al. Eq. 42
-    RCb = 1 / (Nu[2] * kf * π) * rₑ[2] / rb # In borehole at rb, Jacques et al. Eq. 43
-
-    # Pipe thermal resistance
-    Rp = log(ro / ri) / (2 * π * np * kp * Hp) # Jacques et al. Eq. A.40
-
-    # Total borehole thermal resistance in SCW
-    Rv = H / (cpf * ρf * V)             # Fluid flow hydraulic resistance, Jacques et al. Eq. 18
-    R12 = RCi + RCo + Rp                # Internal thermal resistance, Jacques et al. Eq. 17
-    Rsb = RCb * (1 + (Rv^2 / (3 * RCb * R12))) # Subsurface borehole resist., Jacques et al. Eq. 15
-    Rfb = Rsb - RCb                     # Fluid thermal resistance of the borehole in a SCW
-    # Rfb2 = R12 - RCb                    # As implemented in the codes of Jacques et al. (2025)
-    return Rfb, Rv, f
-end
-
-"""
-    convergence_flow(K, H)
+    convergence_flow(K)
 
 Evaluate the balance point "m" and the hydraulic conductivities over and under it in a SCW caused by
 recirculation flow. This is used to compute the effective length in the β-ILS model that considers
@@ -273,7 +160,6 @@ induced convergent flow in a SCW, as defined by Jacques et al. (2025).
     - `K`: A (jx2) matrix of "j" hydrogeological layers and their hydraulic properties:
         - Column 1: Thickness [m]
         - Column 2: Hydraulic conductivitiy [m/s]
-    - `H`: Total borehole depth [m]
 # Output
     - `H̃₁`: Depressurization length in the borehole [m]
     - `H̃₂`: Surpressurization length in the borehole [m]
@@ -284,25 +170,25 @@ induced convergent flow in a SCW, as defined by Jacques et al. (2025).
         validation of an analytical model for standing column wells operated with bleed. Applied 
         Thermal Engineering, 279, 127620.
 """
-function convergence_flow(K::AbstractMatrix{T}, H::T) where {T<:AbstractFloat}
+function convergence_flow(K::AbstractMatrix{<:Real})
     # 0. Constants and initialization
     nlayer = size(K, 1)                 # Number of hydrogeologic layers
     ΔH = sum(@view K[:, 1])             # Total zone thickness where the property are calculated
-    Hᵢ = H - ΔH                         # Initial depth where the property are calculated
     mᵢ = ΔH / 2                         # Initial guess of balance point m (dimensionless)
     i = 1                               # Iterator
-    iₘ = 1000                           # Max number of iteration to convergence
+    iₘ = 100                            # Max number of iteration to convergence
     Δm = 1.0                            # Middle point convergence
-    tol = 1e-6                          # Tolerance criteria before convergence in meters
+    tol = 1e-2                          # Tolerance criteria before convergence in meters
     
     # Preallocation
+    T = float(promote_type(eltype(K)))
     m, Kh1, Kh2, Kv1, Kv2 = zero(T), zero(T), zero(T), zero(T), zero(T), zero(T), zero(T)
     K̃₁, K̃₂ = zero(T), zero(T)
 
     # 1. Iteration loop
     while i ≤ iₘ && Δm ≥ tol
         # Depth of the middle point
-        zm = ΔH / mᵢ + Hᵢ # Weighted average depth of middle point
+        zm = ΔH / mᵢ # Weighted average depth of middle point
 
         # Initialize variables for accumulation
         H_up, H_low = zero(T), zero(T)
@@ -346,7 +232,7 @@ function convergence_flow(K::AbstractMatrix{T}, H::T) where {T<:AbstractFloat}
 
         # Update balance point
         zmp = Kh2 * ΔH / (Kh1 + Kh2)
-        m   = ΔH / (zmp + Hᵢ)
+        m   = ΔH / zmp
 
         # Convergence criteria
         Δm = abs(m - mᵢ)

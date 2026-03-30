@@ -6,16 +6,17 @@ standing column well (SCW).
 using BenchmarkTools
 using CairoMakie
 
-includet("../src/GroundHeatExchanger.jl")
-using .GroundHeatExchanger
+includet("../src/StandingColumnWell.jl")
+using .StandingColumnWell
 
 # Define physical parameters for the SCW
 H = 500.0                       # Borehole depth [m]
 Hp = 495.0                      # Pipe length [m]
-ri = 0.02434                    # Inner radius of the pipe [m]
-ro = 0.03016                    # Outer radius of the pipe [m]
 rb = 0.083                      # Borehole radius [m]
+ro = 0.03016                    # Outer radius of the pipe [m]
+ri = 0.02434                    # Inner radius of the pipe [m]
 rm = 100.0                      # Influence radius of the borehole [m]
+h_recircu = 0.22                # Observed drawdown due to pumping [m]
 
 # Define ground properties
 T₀ = 8.0                        # Initial temperature of the ground [°C]
@@ -46,10 +47,6 @@ Vb = ones(n) * 17.5 / 60000
 Vb[1:60 * 24 * 10] .= 1e-9      # Avoid value of zero for the β-ILS model
 Vb[60 * 24 * 10 + 1:60 * 24 * 20] .= 17.5 / 60000 / 2
 
-# Other parameters used for calculation
-h_recircu = 0.22                # Observed drawdown due to pumping [m]
-r_influence = 100               # Influence radius of pumping [m]
-
 # Pre-processing of the input data
 ind, state, ind_unique = state_indices(Vp, Vb)
 V = Vp[ind_unique]              # Unique pumping flow rates [m³/s]
@@ -59,11 +56,11 @@ ns = length(ind)                # Number of states
 # Verification: Evaluate the thermal resistance
 Rb, Rv, f = zeros(length(ind)), zeros(length(ind)), zeros(length(ind)) # Preallocation
 for i in 1:length(ind)
-    Rb[i], Rv[i], f[i] = Rb_SCW(V[i], kp, rb, ro, ri, H, Hp, T₀)
+    Rb[i], Rv[i], f[i] = borehole_resistance_scw(V[i], kp, rb, ro, ri, H, Hp, T₀, 2.0, 5e-3, 5e-4)
 end
 
 # Verification: Evaluate properties and lengths for induced convergence flow
-KK = convergence_flow(K, H)
+KK = convergence_flow(K)
 
 # Verification: Borehole wall g-function for a SCW
 gb = Matrix{Float64}(undef, n, ns)
@@ -74,7 +71,7 @@ end
 # Evaluate the outlet transfer function for each set of operating conditions
 g = Matrix{Float64}(undef, n, ns)
 for i in 1:length(ind)
-    g[:, i] = βils_outlet(t, k, kp, K, rb, ro, ri, H, Hp, V[i], B[i] ./ V[i], T₀)
+    g[:, i] = βils_outlet(t, k, kp, K, rb, ro, ri, H, Hp, V[i], B[i] ./ V[i], T₀, 2.0, 5e-3, 5e-4)
 end
 
 # @time g_test = βils_outlet(t, k, kp, K, rb, ro, ri, H, Hp, V[1], B[1] ./ V[1], T₀)
@@ -103,7 +100,6 @@ lines!(ax, t / (3600 * 24), Vb * 6e4, color = :green, linewidth = 1.5)
 ax = Axis(fig[2, 1:2], xlabel = L"$t$ (d)", ylabel = L"$g_{out}$ (°Cm/W)", xscale = log10)
 for i in 1:ns
 lines!(ax, t / (3600 * 24), g[:, i], linewidth = 1.5, label = "State $i")
-    # label = "State $i: V=$(round(V[i]*6e4)) L/min, B=$(round(B[i]*6e4)) L/min")
 end
 axislegend(ax; position = :lt)
 
