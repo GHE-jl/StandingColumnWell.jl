@@ -15,8 +15,10 @@ Hp = 495.0                      # Pipe length [m]
 rb = 0.083                      # Borehole radius [m]
 ro = 0.03016                    # Outer radius of the pipe [m]
 ri = 0.02434                    # Inner radius of the pipe [m]
-rm = 100.0                      # Influence radius of the borehole [m]
-h_recircu = 0.22                # Observed drawdown due to pumping [m]
+ΔHₚ = 0.22                      # Observed drawdown due to pumping [m]
+rₚ = 100.0                      # Influence radius of the borehole [m]
+ϵb = 5e-3                       # Borehole roughness height [m]
+ϵp = 5e-4                       # Pipe roughness height [m]
 
 # Define ground properties
 T₀ = 8.0                        # Initial temperature of the ground [°C]
@@ -56,7 +58,7 @@ ns = length(ind)                # Number of states
 # Verification: Evaluate the thermal resistance
 Rb, Rv, f = zeros(length(ind)), zeros(length(ind)), zeros(length(ind)) # Preallocation
 for i in 1:length(ind)
-    Rb[i], Rv[i], f[i] = borehole_resistance_scw(V[i], kp, rb, ro, ri, H, Hp, T₀, 2.0, 5e-3, 5e-4)
+    Rb[i], Rv[i], f[i] = borehole_resistance_scw(V[i], H, rb, ro, ri, kp, T₀, ϵb, ϵp)
 end
 
 # Verification: Evaluate properties and lengths for induced convergence flow
@@ -65,13 +67,13 @@ KK = convergence_flow(K)
 # Verification: Borehole wall g-function for a SCW
 gb = Matrix{Float64}(undef, n, ns)
 for i in 1:length(ind)
-    gb[:, i] = βils(t, k, K, rb, ro, H, V[i], B[i] / V[i], f[i])
+    gb[:, i] = βils(t, V[i], B[i] / V[i], H, rb, ro, k, K, f[i], ΔHₚ, rₚ)
 end
 
 # Evaluate the outlet transfer function for each set of operating conditions
 g = Matrix{Float64}(undef, n, ns)
 for i in 1:length(ind)
-    g[:, i] = βils_outlet(t, k, kp, K, rb, ro, ri, H, Hp, V[i], B[i] ./ V[i], T₀, 2.0, 5e-3, 5e-4)
+    g[:, i] = βils_outlet(t, V, β, H, rb, ro, ri, k, kp, K, T₀, ϵb, ϵp, ΔHₚ, rₚ)
 end
 
 # @time g_test = βils_outlet(t, k, kp, K, rb, ro, ri, H, Hp, V[1], B[1] ./ V[1], T₀)
