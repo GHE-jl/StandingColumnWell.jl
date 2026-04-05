@@ -4,17 +4,17 @@ Validation using the inputs provided by Gabrielle Beaudry.
 
 using CairoMakie
 
-# includet("../../GroundHeatExchanger.jl/src/GroundHeatExchanger.jl")
-# using .GroundHeatExchanger
-
 includet("../src/StandingColumnWell.jl")
 using .StandingColumnWell
 
 # Operational parameters
 t = 0.0:3600:3600*24*365    # Time vector (s)
-Vp = 0.001633               # Pumping rate (m3/s)
-Vb = 0.0/1000/60            # Bleed rate (m3/s)
+V = 0.001633               # Pumping rate (m3/s)
+B = 0.0/1000/60            # Bleed rate (m3/s)
+β = B / V                   # Bleed ratio [-]
 T₀ = 10.0                   # Average fluid temperature for property evaluation (°C)
+ΔHₚ = 0.22                  # Observed drawdown due to pumping [m]
+rₚ = 100.0                  # Influence radius of the borehole [m]
 
 # Geometric parameters
 rb = 0.0855                 # SCW radius (m)
@@ -39,17 +39,17 @@ K = [7.0 1e-5; H - 7.0 1e-7] # Hydraulic properties
 
 # Compute the outputs of the β-ILS model
  # Thermal resistance of the SCW
-Rb, Rv, f = borehole_resistance_scw(Vp, kp, rb, ro, ri, H, Hp, T₀, dT, ϵb, ϵp)
+Rfb, Rv, f = borehole_resistance_scw(V, H, rb, ro, ri, kp, T₀, ϵb, ϵp)
  # Effective length of the SCW considering recirculation flow
 H̃₁, H̃₂, K̃₁, K̃₂ = convergence_flow(K)
  # Borehole wall g-function
-gb = βils(t, k, K, rb, ro, H, Vp, Vb, f)
+gb = βils(t, V, β, H, rb, ro, k, K, f, ΔHₚ, rₚ)
 # Outlet g-function
-gout = βils_outlet(t, k, kp, K, rb, ro, ri, H, Hp, Vp, Vb, T₀, dT, ϵb, ϵp)
+gout = βils_outlet(gb, Rfb, Rv, β)
 
 fig = Figure()
-ax1 = Axis(fig[1, 1], xlabel="Time (s)", ylabel="g-function")
-lines!(ax1, t, gb, label="Borehole wall g-function")
-lines!(ax1, t, gout, label="Outlet g-function")
+ax1 = Axis(fig[1, 1], xlabel="Time (s)", ylabel="β-ILS")
+lines!(ax1, t, gb, label="Borehole wall β-ILS")
+lines!(ax1, t, gout, label="Outlet β-ILS")
 axislegend(ax1, position=:rc)
 display(fig)

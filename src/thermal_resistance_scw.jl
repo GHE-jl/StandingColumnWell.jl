@@ -1,5 +1,5 @@
 """
-    borehole_resistance_scw(V, kp, rb, ro, ri, H, Hp, Tf, dT=2.0, ϵb=5e-4, ϵp=5e-4)
+    borehole_resistance_scw(V, H, rb, ro, ri, kp, T₀, ϵb, ϵp)
 
 Computation of theoretical borehole thermal resistance in a SCW based on Jacques et al. 2025. This 
 formulation assumes uniform flux along the borehole wall.
@@ -27,7 +27,7 @@ formulation assumes uniform flux along the borehole wall.
         Springer Nature Switzerland.
 """
 function borehole_resistance_scw(V::Real, H::Real, rb::Real, ro::Real, ri::Real, kp::Real, T₀::Real,
-    ϵb::Real=5e-4, ϵp::Real=5e-4)
+    ϵb::Real, ϵp::Real)
     # Initialize parameters
     kf = water_k(T₀)                    # Water thermal conductivity at working fluid temperature
     ρf = water_ρ(T₀)                    # Water density at working fluid temperature

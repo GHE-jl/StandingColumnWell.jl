@@ -73,7 +73,7 @@ end
 # Evaluate the outlet transfer function for each set of operating conditions
 g = Matrix{Float64}(undef, n, ns)
 for i in 1:length(ind)
-    g[:, i] = βils_outlet(t, V, β, H, rb, ro, ri, k, kp, K, T₀, ϵb, ϵp, ΔHₚ, rₚ)
+    g[:, i] = βils_outlet(t, V[i], B[i] / V[i], H, rb, ro, ri, k, kp, K, T₀, ϵb, ϵp, ΔHₚ, rₚ)
 end
 
 # @time g_test = βils_outlet(t, k, kp, K, rb, ro, ri, H, Hp, V[1], B[1] ./ V[1], T₀)
