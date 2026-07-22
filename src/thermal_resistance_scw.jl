@@ -46,8 +46,8 @@ function borehole_resistance_scw(V::Real, H::Real, rb::Real, ro::Real, ri::Real,
     # Reynolds numbers
     V̇[1] = V / (π * ri^2)               # Fluid velocity in the pipe [m/s]
     V̇[2] = V / ((π * rb^2) - (π * ro^2)) # Fluid velocity in the borehole [m/s]
-    Re[1] = Reynold(V̇[1], rₑ[1], ρf, μf) # Reynolds number in the pipe
-    Re[2] = Reynold(V̇[2], rₑ[2], ρf, μf) # Reynolds number in the borehole
+    Re[1] = Reynolds(V̇[1], rₑ[1], ρf, μf) # Reynolds number in the pipe
+    Re[2] = Reynolds(V̇[2], rₑ[2], ρf, μf) # Reynolds number in the borehole
 
     # Prandtl numbers (same as in the pipe since same fluid properties)
     Pr = Prandtl(kf, cpf, μf)
