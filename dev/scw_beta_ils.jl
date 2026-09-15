@@ -16,8 +16,7 @@ B = 0.0/1000/60             # Bleed rate (m3/s)
 T₀ = 10.0                   # Average fluid temperature for property evaluation (°C)
 ΔHₚ = 0.22                  # Observed drawdown due to pumping [m]
 rₚ = 100.0                  # Influence radius of the borehole [m]
-ρ = water_ρ(T₀)             # Water density at working fluid temperature [kg/m³]
-μ = water_μ(T₀)             # Water viscosity at working fluid temperature [Pa·s]
+_, _, ρ, μ = fluid_property(T₀, :water) # Water density [kg/m³], viscosity [Pa·s]
 
 # Geometric parameters
 rb = 0.0855                 # SCW radius (m)
@@ -38,7 +37,7 @@ k = [73.0 2.54 2.17e6 ; 71.0 2.74 2.27e6 ; H - 144.0 2.94 2.37e6] # Thermal prop
 K = [7.0 1e-5; H - 7.0 1e-7] # Hydraulic properties
 
 # Properties
-Re = Reynold(V / ((π * rb^2) - (π * ro^2)), rb - ro, water_ρ(T₀), water_μ(T₀))
+Re = Reynolds(V / ((π * rb^2) - (π * ro^2)), rb - ro, ρ, μ)
 Rfb, Rv, f = borehole_resistance_scw(V, H, rb, ro, ri, kp, T₀, ϵb, ϵp)
 
 # Methods for the β-ILS model

@@ -178,8 +178,8 @@ function βils(t, V::Real, β::Real, H::Real, rb::Real, ro::Real, k::AbstractMat
 end
 function βils(t, V::Real, β::Real, H::Real, rb::Real, ro::Real, k::AbstractMatrix{<:Real},
     K::AbstractMatrix{<:Real}, ϵb::Real, ρ::Real, μ::Real, ΔHₚ::Real, rₚ::Real)
-    # Reynold calculation
-    Re = Reynold(V / ((π * rb^2) - (π * ro^2)), rb - ro, ρ, μ)
+    # Reynolds calculation
+    Re = Reynolds(V / ((π * rb^2) - (π * ro^2)), rb - ro, ρ, μ)
     # Friction factor using the Colebrook-White equation
     f = friction_factor_Colebrook_White(Re, rb - ro, ϵb)
     return βils(t, V, β, H, rb, ro, k, K, f, ΔHₚ, rₚ)

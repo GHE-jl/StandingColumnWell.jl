@@ -1,3 +1,6 @@
+using BoreholeResistance
+using GroundHeatExchanger
+
 """
     borehole_resistance_scw(V, H, rb, ro, ri, kp, T₀, ϵb, ϵp)
 
@@ -29,10 +32,7 @@ formulation assumes uniform flux along the borehole wall.
 function borehole_resistance_scw(V::Real, H::Real, rb::Real, ro::Real, ri::Real, kp::Real, T₀::Real,
     ϵb::Real, ϵp::Real)
     # Initialize parameters
-    kf = water_k(T₀)                    # Water thermal conductivity at working fluid temperature
-    ρf = water_ρ(T₀)                    # Water density at working fluid temperature
-    cpf = water_cp(T₀)                  # Water specific heat at working fluid temperature
-    μf = water_μ(T₀)                    # Water viscosity at working fluid temperature
+    kf, cpf, ρf, μf = fluid_property(T₀, :water) # Water properties at working fluid temperature
     ϵ = (ϵb * rb + ϵp * ro) / (rb + ro) # Equivalent roughness [m] Jacques et al. Eq. 47
 
     # Preallocation of properties for pipe and borehole
