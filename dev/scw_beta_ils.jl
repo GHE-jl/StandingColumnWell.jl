@@ -3,10 +3,11 @@ Script to test the implementation of the β-ILS model for a standing column well
 heterogeneous ground properties.
 """
 
-using CairoMakie
+using Pkg; Pkg.activate(joinpath(@__DIR__, "..", "script"))
 
-includet("../src/StandingColumnWell.jl")
-using .StandingColumnWell
+using StandingColumnWell
+using GroundHeatExchanger: fluid_property, Reynolds
+using CairoMakie
 
 # Operational parameters
 t = 0.0:3600:3600*24*365    # Time vector (s)

@@ -1,10 +1,9 @@
 # Generation of SCW thermal resistance values for different depth
 # Code to help in the CMM project
 
-includet("../src/thermal_resistance_scw.jl")
-includet("../../BoreholeResistance.jl/src/BoreholeResistance.jl")
+using Pkg; Pkg.activate(joinpath(@__DIR__, "..", "script"))
 
-using .BoreholeResistance
+using StandingColumnWell
 
 # Define variables
 V = 100.0 / 1000 / 60               # Pumping rate (m3/s)

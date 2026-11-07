@@ -2,10 +2,11 @@
 Validation using the inputs provided by Gabrielle Beaudry.
 """
 
-using CairoMakie
+using Pkg; Pkg.activate(@__DIR__)
+# Pkg.instantiate() # Once per machine, to install dependencies in the local environment
 
-includet("../src/StandingColumnWell.jl")
-using .StandingColumnWell
+using StandingColumnWell
+using CairoMakie
 
 # Operational parameters
 t = 0.0:3600:3600*24*365    # Time vector (s)

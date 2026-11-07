@@ -1,13 +1,14 @@
 """
-Script testing the enhanced \beta-ILS model from GHEModels.jl using a single borehole to model a
+Script testing the enhanced β-ILS model of StandingColumnWell.jl using a single borehole to model a
 standing column well (SCW).
 """
 
-using BenchmarkTools
-using CairoMakie
+using Pkg; Pkg.activate(@__DIR__)
+# Pkg.instantiate() # Once per machine, to install dependencies in the local environment
 
-includet("../src/StandingColumnWell.jl")
-using .StandingColumnWell
+using StandingColumnWell
+using GroundHeatExchanger: state_indices, convolution_ns
+using CairoMakie
 
 # Define physical parameters for the SCW
 H = 500.0                       # Borehole depth [m]

@@ -1,4 +1,3 @@
-using BoreholeResistance
 using GroundHeatExchanger
 
 """
