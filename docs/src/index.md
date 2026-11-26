@@ -20,7 +20,7 @@ source, the temporal superposition and the fluid properties/correlations.
   properties of a layered aquifer under the recirculation flow (Jacques et al. 2025, Eq. 31).
 - **β-ILS g-function** ([`βils`](@ref)) — borehole wall g-function of the SCW, from the ILS and a
   scaling function of the Péclet number and the bleed ratio `β` (Jacques et al. 2025, Eq. 8).
-- **Outlet transfer function** ([`βils_outlet`](@ref)) — outlet fluid temperature response of the
+- **Outlet g-function** ([`βils_outlet`](@ref)) — outlet fluid temperature response of the
   SCW for 1 W/m (Jacques et al. 2025, Eq. 27), to be used with `convolution` or `convolution_ns`
   from `GroundHeatExchanger.jl`.
 

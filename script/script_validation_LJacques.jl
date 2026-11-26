@@ -71,7 +71,7 @@ for i in 1:length(ind)
     gb[:, i] = βils(t, V[i], B[i] / V[i], H, rb, ro, k, K, f[i], ΔHₚ, rₚ)
 end
 
-# Evaluate the outlet transfer function for each set of operating conditions
+# Evaluate the outlet g-function for each set of operating conditions
 g = Matrix{Float64}(undef, n, ns)
 for i in 1:length(ind)
     g[:, i] = βils_outlet(t, V[i], B[i] / V[i], H, rb, ro, ri, k, kp, K, T₀, ϵb, ϵp, ΔHₚ, rₚ)
@@ -79,7 +79,7 @@ end
 
 # @time g_test = βils_outlet(t, k, kp, K, rb, ro, ri, H, Hp, V[1], B[1] ./ V[1], T₀)
 
-# Convert the outlet transfer function to an impulse of 1 °C (for comparison)
+# Convert the outlet g-function to an impulse of 1 °C (for comparison)
 gT = Matrix{Float64}(undef, n, ns)
 for i in 1:length(ind)
     gT[:, i] = g[:, i] .* Cf * V[i] / H
@@ -90,7 +90,7 @@ end
 T = ΔT .+ T₀        # Temperature below the submersible pump. Add Qp/(Cf*mean(V)) for T_out.
 Tverif = T[[1000, 5000, 10000, 25000, 35000, 40000]]
 
-# Plot the transfer functions
+# Plot the g-functions
 fig = Figure(; size = (17 * 96 / 2.54, 18 * 96 / 2.54))
 
 ax = Axis(fig[1, 1], xlabel = L"$t$ (d)", ylabel = L"$Q$ (W)")

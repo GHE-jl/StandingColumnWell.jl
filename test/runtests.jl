@@ -34,7 +34,7 @@ using StandingColumnWell
         @test length(gb) == length(t)
         @test all(gb .>= 0)
 
-        # The three outlet methods give the same transfer function, never negative
+        # The three outlet methods give the same g-function, never negative
         g1 = βils_outlet(gb, Rfb, Rv, β)
         g2 = βils_outlet(t, V, β, H, rb, ro, k, K, Rfb, Rv, f, ΔHₚ, rₚ)
         g3 = βils_outlet(t, V, β, H, rb, ro, ri, k, kp, K, T₀, ϵb, ϵp, ΔHₚ, rₚ)

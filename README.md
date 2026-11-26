@@ -23,7 +23,7 @@ kp, ϵb, ϵp = 0.4, 0.0, 0.0                      # pipe conductivity [W/mK], ro
 k = [H 2.7 2.2e6]                               # thermal layers: thickness, ks, Cs
 K = [H 1e-6]                                    # hydraulic layers: thickness, K [m/s]
 
-# Outlet transfer function of the SCW for 1 W/m
+# Outlet g-function of the SCW for 1 W/m
 g̃ = βils_outlet(t, V, β, H, rb, ro, ri, k, kp, K, T₀, ϵb, ϵp, ΔHₚ, rₚ)
 ```
 
@@ -35,7 +35,7 @@ g̃ = βils_outlet(t, V, β, H, rb, ro, ri, k, kp, K, T₀, ϵb, ϵp, ΔHₚ, r�
   properties of a layered aquifer under the recirculation flow.
 - **β-ILS g-function** (`βils`): borehole wall g-function of the SCW, from the ILS and a scaling
   function of the Péclet number and the bleed ratio `β`.
-- **Outlet transfer function** (`βils_outlet`): outlet fluid temperature response of the SCW for
+- **Outlet g-function** (`βils_outlet`): outlet fluid temperature response of the SCW for
   1 W/m, to be used with `convolution` or `convolution_ns` from `GroundHeatExchanger.jl`.
 
 See the [documentation](https://GHE-jl.github.io/StandingColumnWell.jl) for the full API reference.

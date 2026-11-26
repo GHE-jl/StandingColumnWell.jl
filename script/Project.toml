@@ -8,5 +8,5 @@ StandingColumnWell = {path = ".."}
 
 [compat]
 CairoMakie = "0.15"
-GroundHeatExchanger = "1.1"
+GroundHeatExchanger = "2"
 julia = "1.11"

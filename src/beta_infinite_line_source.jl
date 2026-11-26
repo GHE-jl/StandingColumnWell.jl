@@ -10,10 +10,10 @@ in the GroundHeatExchanger.jl
     βils_outlet(t, V, β, H, rb, ro, k, K, Rfb, Rv, f, ΔHₚ, rₚ)
     βils_outlet(t, V, β, H, rb, ro, ri, k, kp, K, T₀, ϵb, ϵp, ΔHₚ, rₚ)
 
-Compute the borehole outlet transfer function from the β-ILS model and the thermal resistance
+Compute the borehole outlet g-function from the β-ILS model and the thermal resistance
 of the SCW. The function computes the borehole wall (g-function) using the β-ILS model, then
-adjusts it to obtain the outlet transfer function using the development from Jacques et al. (2025).
-The obtained transfer function is for an impulse of 1 W/m.
+adjusts it to obtain the outlet g-function using the development from Jacques et al. (2025).
+The obtained g-function is for an impulse of 1 W/m.
 # Arguments
     - `t`: Time vector (nₜ x 1) [s]
     - `V`: Circulating fluid flow rate [m³/s]
@@ -43,7 +43,7 @@ The obtained transfer function is for an impulse of 1 W/m.
     - `Rv`: Hydraulic resistance due to the fluid flow [K·m/W]
     - `f`: Friction factor of the borehole [-]
 # Output
-    - `g̃`: A transfer function for the outlet fluid temperature of SCW [°Cm/W]
+    - `g̃`: A g-function for the outlet fluid temperature of SCW [°Cm/W]
 # Reference
     - Nguyen, A., Jacques, L., & Pasquier, P. (2025). An easy-to-use analytical model for 
         standing column wells operating with bleed. Applied Thermal Engineering.
@@ -161,7 +161,7 @@ function βils(t, V::Real, β::Real, H::Real, rb::Real, ro::Real, k::AbstractMat
     # Jacques et al. Eq. 4
     h = @. ϵ[1] * (1 - ϵ[2] * β) * (1 + erf((sqrt(Pe) / ϵ[3]) * ((1 - ta^ϵ[4]) / (ta^ϵ[4]))))
     
-    # Initial transfer function g_0 based on the SLI
+    # Initial g-function g_0 based on the SLI
     g₀ = ils(t, rb, ks, Cs)                 # Jacques et al. Eq. 3
 
     # Combine initial and scaling function
